@@ -124,12 +124,12 @@ class Client
     /**
      * @return Repository[]
      */
-    public function getRepositories()
+    public function getRepositories($type = 'owner', $maxPage = 100)
     {
         $page = 1;
         $repositories = [];
         do {
-        $buffer =$this->request('GET', '/user/repos?per_page=' . $this->repositoryLimit . '&page=' . $page . '&type=owner');
+        $buffer =$this->request('GET', '/user/repos?per_page=' . $this->repositoryLimit . '&page=' . $page . '&type=' . $type);
             $list = json_decode($buffer);
             foreach($list as $index => $data) {
                 $repository = new Repository($this, $data->name);
@@ -137,11 +137,61 @@ class Client
                 $repositories[] = $repository;
             }
             $page++;
-        } while(count($list) && $page < 3);
+        } while(count($list) && $page < $maxPage);
 
         return $repositories;
 
     }
+
+
+        /**
+     * @return Repository[]
+     */
+    public function getRepositoriesByOrganization($organization, $maxPage = 100, $cache = false)
+    {
+
+        if($cache && is_file($cache)) {
+            $list = \json_decode(\file_get_contents($cache));
+            foreach($list as $index => $data) {
+                $allItems[] = $data;
+                $repository = new Repository($this, $data->name);
+                $repository->loadFromObject($data);
+                $repositories[] = $repository;
+            }
+            return $repositories;
+        }
+
+        $page = 1;
+        $repositories = [];
+
+        $allItems = [];
+
+        do {
+            $buffer =$this->request('GET', '/orgs/' . $organization . '/repos?per_page=' . $this->repositoryLimit . '&page=' . $page);
+
+            $list = json_decode($buffer);
+            foreach($list as $index => $data) {
+                $allItems[] = $data;
+                $repository = new Repository($this, $data->name);
+                $repository->loadFromObject($data);
+                $repositories[] = $repository;
+            }
+            $page++;
+        } while(count($list) && $page < $maxPage);
+
+
+        if($cache) {
+            \file_put_contents($cache, \json_encode($allItems, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
+        }
+
+
+        return $repositories;
+
+    }
+
+
+
+
 
     public function flushRepositories($onlyOwner = true, $force = false)
     {

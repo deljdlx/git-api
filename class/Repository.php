@@ -13,6 +13,13 @@ class Repository
 
     private $properties = null;
 
+
+    /**
+     * @var Owner
+     */
+    private $owner;
+
+
     /**
     * @var Client
     **/
@@ -37,7 +44,7 @@ class Repository
 
     public function getRepository()
     {
-        return $this->method . ':' . $this->getOwner() . '/' . $this->getName();
+        return $this->method . ':' . $this->getOwner()->getName() . '/' . $this->getName();
     }
 
     
@@ -95,6 +102,18 @@ class Repository
     }
 
 
+    public function pullAll(&$buffer = null)
+    {
+        $current = getcwd();
+        chdir($this->getPath());
+        exec('git fetch --all', $lines);
+        exec('git pull --all', $lines);
+        chdir($current);
+        $buffer = implode("", $lines);
+        return $this;
+    }
+
+
     public function commitRequired()
     {
         $current = getcwd();
@@ -114,6 +133,8 @@ class Repository
     public function loadFromObject($data)
     {
         $this->properties = $data;
+        $this->owner = new Owner();
+        $this->owner->loadFromObject($data->owner);
         return $this;
     }
 
@@ -128,6 +149,7 @@ class Repository
 
     public function getOwner()
     {
+        return $this->owner;
         return $this->api->getOwner();
     }
 
