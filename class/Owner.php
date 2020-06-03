@@ -2,22 +2,6 @@
 
 namespace JDLX\GithubAPI;
 
-class Owner
+class Owner extends User
 {
-    private $properties;
-
-
-
-    public function loadFromObject($data)
-    {
-        $this->properties = $data;
-        return $this;
-    }
-
-
-    public function getName()
-    {
-        return $this->properties->login;
-    }
-
 }

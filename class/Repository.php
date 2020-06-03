@@ -2,52 +2,76 @@
 
 namespace JDLX\GithubAPI;
 
-
-class Repository
+class Repository extends Entity
 {
     const GIT_NOTHING_TO_COMMIT = 'nothing to commit, working tree clean';
     private $method = 'git@github.com';
     private $name;
     private $path;
 
-
-    private $properties = null;
-
+    /**
+     * @var Organization
+     */
+    private $organization;
 
     /**
      * @var Owner
      */
     private $owner;
 
-
     /**
-    * @var Client
-    **/
+     * @var Client
+     **/
     protected $api;
 
-    public function __construct(Client $api, $name)
+    protected $collaborators;
+    protected $contributors;
+
+    protected $commits;
+
+    public function __construct(Client $api, $name = null)
     {
         $this->setApi($api);
-        $this->name = $name;
+        if ($name) {
+            $this->name = $name;
+        }
     }
 
+    public function getContributor()
+    {
+        if ($this->contributors === null) {
+            $this->contributors = [];
+            $this->contributors = $this->api->getRepositoryContributors($this->getFullQualifiedName());
+        }
+        return $this->contributors;
+    }
 
+    public function getCollaborators($permissions = ['admin'])
+    {
+        if ($this->collaborators === null) {
+            $this->collaborators = [];
+            $this->collaborators = $this->api->getRepositoryCollaborators($this->getFullQualifiedName());
+        }
+        return $this->collaborators;
+    }
+
+    public function getCommits()
+    {
+        if ($this->commits === null) {
+            $this->commits = [];
+            $this->commits = $this->api->getRepositoryCommits($this->getFullQualifiedName());
+        }
+        return $this->commits;
+    }
 
     public function create()
     {
         //curl -H "Authorization: token $fromToken" --header "Content-Type: application/json" -X POST --data '{"name":"'repository'","private":false,"has_issues":false,"has_projects":false,"has_wiki":false}' https://api.github.com/user/repos
         $this->api->createRepository($this->name);
+
         return $this;
-
     }
 
-
-    public function getRepository()
-    {
-        return $this->method . ':' . $this->getOwner()->getName() . '/' . $this->getName();
-    }
-
-    
     public function getOrigin()
     {
         $current = getcwd();
@@ -56,15 +80,15 @@ class Repository
         chdir($current);
 
         $urls = [];
-        foreach($lines as $index => $line) {
-
-            if(preg_match('`^origin`', $line)) {
+        foreach ($lines as $index => $line) {
+            if (preg_match('`^origin`', $line)) {
                 $line = trim($line);
                 $type = preg_replace('`.*?\((.*?)\)$`', '$1', $line);
-                $url =  preg_replace('`.*?(' . $this->method . ':.*?)\s.*`', '$1', $line);
+                $url = preg_replace('`.*?(' . $this->method . ':.*?)\s.*`', '$1', $line);
                 $urls[$type] = $url;
             }
         }
+
         return $urls;
     }
 
@@ -72,21 +96,23 @@ class Repository
     {
         $current = getcwd();
         chdir($this->getPath());
-        exec('git remote set-url origin '.$origin, $lines);
+        exec('git remote set-url origin ' . $origin, $lines);
         $buffer = implode('', $lines);
         chdir($current);
+
         return $this;
     }
 
     public function clone($path, &$buffer = null)
     {
-        if(!is_dir($path)) {
+        if (!is_dir($path)) {
             mkdir($path, 0755, true);
         }
         $this->setPath($path);
-        exec('git clone ' . $this->getRepository() . ' '. $this->getPath(), $lines);
+        exec('git clone ' . $this->getRepository() . ' ' . $this->getPath(), $lines);
 
         $buffer = implode('', $lines);
+
         return $this;
     }
 
@@ -97,10 +123,10 @@ class Repository
         exec('git push', $lines);
         chdir($current);
 
-        $buffer = implode("", $lines);
+        $buffer = implode('', $lines);
+
         return $this;
     }
-
 
     public function pullAll(&$buffer = null)
     {
@@ -109,10 +135,10 @@ class Repository
         exec('git fetch --all', $lines);
         exec('git pull --all', $lines);
         chdir($current);
-        $buffer = implode("", $lines);
+        $buffer = implode('', $lines);
+
         return $this;
     }
-
 
     public function commitRequired()
     {
@@ -121,43 +147,48 @@ class Repository
         exec('git status', $lines);
         $buffer = implode('', $lines);
         chdir($current);
-        if(preg_match('`'.static::GIT_NOTHING_TO_COMMIT.'`', $buffer)) {
+        if (preg_match('`' . static::GIT_NOTHING_TO_COMMIT . '`', $buffer)) {
             return true;
-        }
-        else {
+        } else {
             return false;
         }
     }
 
-
-    public function loadFromObject($data)
+    public function loadData($data)
     {
-        $this->properties = $data;
-        $this->owner = new Owner();
-        $this->owner->loadFromObject($data->owner);
+        parent::loadData($data);
+        $this->name = $data->name;
+        $this->owner = new Owner($this->api);
+        $this->owner->loadData($data->owner);
+
         return $this;
     }
 
-
-    public function setApi(Client $api)
+    public function setOrganization(Organization $organization)
     {
-        $this->api = $api;
+        $this->organization = $organization;
         return $this;
     }
 
-
-
+    /**
+     *
+     *
+     * @return Owner
+     */
     public function getOwner()
     {
         return $this->owner;
-        return $this->api->getOwner();
+    }
+
+    public function getFullQualifiedName()
+    {
+        return $this->owner->getLogin() . '/' . $this->getName();
     }
 
     public function getName()
     {
         return $this->name;
     }
-
 
     public function getPath()
     {
@@ -176,7 +207,6 @@ class Repository
         return $this->method;
     }
 
-    
     public function getProperties()
     {
         return $this->properties;
