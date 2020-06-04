@@ -24,6 +24,9 @@ class User extends Entity
         $this->setApi($client);
     }
 
+    /**
+     * @return Repository[]
+     */
     public function getRepositories()
     {
         if ($this->repositories === null) {
@@ -33,12 +36,26 @@ class User extends Entity
         return $this->repositories;
     }
 
+    /**
+     * @return Repository[]
+     */
     public function loadData($data)
     {
         parent::loadData($data);
         $this->login = $data->login;
     }
 
+    /**
+     * @return Repository[]
+     */
+    public function searchRepository($repositoryName)
+    {
+        return $this->api->getUserRepositoriesByName($this->getLogin(), $repositoryName);
+    }
+
+    /**
+     * @return Repository[]
+     */
     public function repositoriesContributedTo()
     {
         if ($this->contributedTo === null) {

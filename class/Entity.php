@@ -28,6 +28,11 @@ class Entity
         return $this;
     }
 
+    public function getData()
+    {
+        return $this->data;
+    }
+
     public function loadData($data)
     {
         $this->data = $data;

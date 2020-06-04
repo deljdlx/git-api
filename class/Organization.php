@@ -29,12 +29,24 @@ class Organization extends Entity
      */
     protected $repositories;
 
-    public function __construct(Client $api, $name)
+    public function __construct(Client $api, $name = null)
     {
         $this->setApi($api);
-        $this->name = $name;
+        if ($name) {
+            $this->loadByName($name);
+        }
     }
 
+    public function loadByName($name)
+    {
+        $data = $this->api->getOrganization($name, false);
+        $this->loadData($data);
+    }
+
+    /**
+
+     * @return Team[]
+     */
     public function getTeams()
     {
         if ($this->teams === null) {
@@ -47,6 +59,9 @@ class Organization extends Entity
         return $this->teams;
     }
 
+    /**
+     * @return Repository[]
+     */
     public function getUserRepositories($login, $permissions = ['admin', 'pull', 'push'])
     {
         $userRepositories = [];
@@ -69,11 +84,17 @@ class Organization extends Entity
         return $userRepositories;
     }
 
+    /**
+     * @return Repository[]
+     */
     public function searchRepositories($name)
     {
         return $this->api->searchRepositoriesInOrganization($this->getName(), $name);
     }
 
+    /**
+     * @return Repository[]
+     */
     public function getRepositories($limit = null, $filter = null)
     {
         if ($this->repositories === null) {
@@ -86,7 +107,7 @@ class Organization extends Entity
     }
 
     /**
-     * @return User[]
+     * @return Member[]
      */
     public function getMembers()
     {
@@ -95,7 +116,6 @@ class Organization extends Entity
                 $this->getName()
             );
         }
-
         return $this->members;
     }
 
